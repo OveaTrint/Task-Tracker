@@ -1,10 +1,10 @@
 import json
 from datetime import datetime
 import os
-import itertools
+
+import id_counter
 
 STATUS = ["in-progress", "done"]
-key = itertools.count()
 
 def load_json() -> list:
     # checks if the JSON file does not exist or is empty
@@ -24,9 +24,10 @@ def add_task(task_list: list,desc: str) -> None:
     with open("database.json", "w") as write_json:
         created_at = datetime.now()
         created_at = created_at.strftime("%Y/%m/%d %H:%M:%S")
+        task_id = id_counter.get_next_id()
 
         job = {
-            "id": next(key),
+            "id": task_id,
             "description": desc,
             "status": "to-do",
             "createdAt": created_at,
@@ -50,7 +51,6 @@ def update_task(task_list: list,task_id: int, desc: str):
                 job["updatedAt"] = updated_at
                 break
         print("Task Successfully Updated")
-
         json.dump(task_list, update_json, indent=4)
 
 def delete_task(task_list: list, task_id: int):
@@ -70,7 +70,7 @@ def mark_in_progress(task_list: list, task_id: int):
                 break
         json.dump(task_list, mark_json, indent= 4)
 
-def mark_done(task_list: list, task_id: str):
+def mark_done(task_list: list, task_id: int):
     with open("database.json", "w") as mark_json:
         for job in task_list:
             if job["id"] == task_id:
@@ -80,31 +80,13 @@ def mark_done(task_list: list, task_id: str):
 
 
 def list_task(task_list: list, status = None):
-    if status is not None and status not in STATUS:
-        raise ValueError("Invalid Status, type **help** to see available statuses")
-
-    print("=" * 115)
-    print(f"{"ID":5} ¦{"DESCRIPTION":^50} ¦{"STATUS":^15} ¦{"TIME CREATED":^19} ¦{"TIME UPDATED":^15}")
-    print("=" * 115)
-
     if status is None:
         for job in task_list:
-            print(f"{job["id"]:<5} ¦{job["description"]:^50} ¦{job["status"]:^15} ¦{job["createdAt"]:^15} ¦{job["updatedAt"]:^15}")
-            print("-" * 115)
-    elif status is not None:
-        count = True
-        for job in task_list:
-            if status == job["status"]:
-                count = False
-                break
-        if count:
-            print(f"Task with {status} not present")
-            return None
-
+            print(f"{job["id"]}-{job["description"]}-{job["status"]}-{job["createdAt"]}-{job["updatedAt"]}")
+    else:
         for job in task_list:
             if job["status"] == status:
-                print(f"{job["id"]:<5} ¦{job["description"]:^50} ¦{job["status"]:^15} ¦{job["createdAt"]:15} ¦{job["updatedAt"]:^15}")
-                print("-" * 115)
+                print(f"{job["id"]}-{job["description"]}-{job["status"]}-{job["createdAt"]}-{job["updatedAt"]}")
 
 
 def helper() -> None:
@@ -113,8 +95,7 @@ def helper() -> None:
     print("     *update* {id} {descr} => Updates a task with the id of the task and the description you want to change it to.")
     print("     *list* {status} => List all task by default. You can optionally list by the status")
     print("     *delete* {id} => deletes a task")
-    print("     *mark-in-progress* => Updates the status of a task to in-progress")
-    print("     *mark-done* => Updates the status of a task to done")
+    print("     *mark-in-progress* {id} => Updates the status of a task to in-progress")
     print("     *exit* => Exits the task manager")
     print("     *help* => Lists all commands")
     print("     POSSIBLE STATUSES => in-progress, done")
@@ -131,52 +112,123 @@ if __name__ == "__main__":
         command = list_of_instructions[0]
         args = list_of_instructions[1:]
 
-        if len(tasks) == 0 and command in ["update", "delete", "mark-in-progress", "mark-done", "list"]:
-            print("No tasks available, add a task before using this command")
-            continue
+        if command == "add":
+            description = " ".join(args).lstrip().rstrip()
+            if len(description) == 0:
+                print("No description added")
+                continue
+            add_task(tasks,description)
+        elif command == "update":
+            if len(args) < 2:
+                print("Not enough arguments provided")
+                continue
 
-        if command in ["update", "delete", "mark-in-progress", "mark-done"]:
-            t_id = args[0]
             try:
-                t_id = int(t_id)
+                t_id = int(args[0])
             except ValueError:
                 print("Invalid Task ID")
                 continue
 
-            if t_id < 0:
-                print("Task ID must be greater than 0")
+            for task in tasks:
+                if task["id"] == t_id:
+                    break
+            else:
+                print(f"Task with ID {t_id} not found")
+                continue
+
+            description = " ".join(args[1:]).lstrip().rstrip()
+            if len(description) == 0:
+                print("No description added")
+                continue
+            update_task(tasks, t_id, description)
+
+        elif command == "delete":
+            if len(args) > 1:
+                print("Only one argument (ID) needed")
+                continue
+            elif len(args) < 1:
+                print("No argument found")
+                continue
+
+            try:
+                t_id = int(args[0].lstrip())
+            except ValueError:
+                print("Invalid Task ID")
                 continue
 
             for task in tasks:
                 if t_id == task["id"]:
                     break
             else:
-                print(f"Task with id {t_id} doesn't exist")
+                print(f"Task with ID {t_id} not found")
                 continue
-
-        if command in ["mark-done","mark-in-progress", "delete", "list"] and len(args) > 1:
-            print("Invalid Argument")
-            continue
-
-        if command in ["add", "update"]:
-            if command == "add":
-                description = " ".join(args)
-            else:
-                description = " ".join(args[2:])
-
-
-        if command == "add":
-            add_task(tasks,description)
-        elif command == "update":
-            update_task(tasks, t_id, description)
-        elif command == "delete":
             delete_task(tasks, t_id)
         elif command == "mark-in-progress":
+            if len(args) > 1:
+                print("Only one argument (ID) needed")
+                continue
+            elif len(args) < 1:
+                print("No argument found")
+                continue
+
+            try:
+                t_id = int(args[0].lstrip())
+            except ValueError:
+                print("Invalid Task ID")
+                continue
+
+            for task in tasks:
+                if t_id == task["id"]:
+                    break
+            else:
+                print(f"Task with ID {t_id} not found")
+                continue
             mark_in_progress(tasks, t_id)
         elif command == "mark-done":
+            if len(args) > 1:
+                print("Only one argument (ID) needed")
+                continue
+            elif len(args) < 1:
+                print("No argument found")
+                continue
+            try:
+                t_id = int(args[0].lstrip())
+            except ValueError:
+                print("Invalid Task ID")
+                continue
+
+            for task in tasks:
+                if t_id == task["id"]:
+                    break
+            else:
+                print(f"Task with ID {t_id} not found")
+                continue
+
             mark_done(tasks, t_id)
         elif command == "list":
-            list_task(tasks, )
+            status_present = False
+            if len(args) == 1:
+                status_present = True
+                status__ = args[0].lstrip()
+            elif len(args) > 1:
+                print("Invalid Argument")
+                continue
+
+            if status_present:
+                if status__ not in STATUS:
+                    print("Invalid status, only todo and in-progress are valid")
+                    continue
+
+                for task in tasks:
+                    if status__ == task["status"]:
+                        break
+                else:
+                    print(f"Task with {status__} is not available")
+                    continue
+
+                list_task(tasks, status__)
+            else:
+                list_task(tasks)
         elif command == "help":
             helper()
         elif command == "exit":
