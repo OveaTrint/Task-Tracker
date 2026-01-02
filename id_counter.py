@@ -10,4 +10,4 @@ def get_next_id(counter_file='counter.txt'):
     with open(counter_file, 'w') as f:
         f.write(str(next_id))
 
-    return next_id
+    return next_i
