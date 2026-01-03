@@ -79,7 +79,7 @@ def mark_done(task_list: list, task_id: int):
         json.dump(task_list, mark_json, indent= 4)
         print("Task status changed successfully")
 
-def list_task(task_list: list, status = None):
+def list_task(task_list: list, status):
     print("id |  description  | status | createdAt | updatedAt")
     if status is None:
         for job in task_list:
@@ -115,6 +115,7 @@ if __name__ == "__main__":
         command = list_of_instructions[0]
         args = []
 
+        # Removes any whitespace
         for arg in list_of_instructions[1:]:
             if arg == "":
                 continue
@@ -124,7 +125,7 @@ if __name__ == "__main__":
             print("Invalid Command")
             continue
 
-        # checks if argument for command is empty
+        # checks the argument for each respective command
         if len(args) == 0 and command not in ["list", "exit", "help"]:
             print("No arguments added")
             continue
@@ -138,7 +139,7 @@ if __name__ == "__main__":
             print("Not enough arguments provided ")
             continue
 
-        # Error checks for the task_id related functions
+        # Error checks for the task_id related commands
         if command in ["delete", "mark-done", "mark-in-progress", "update"]:
             t_id = args[0]
             try:
@@ -155,6 +156,7 @@ if __name__ == "__main__":
             except ValueError:
                 print("Invalid Task ID")
                 continue
+        # Error checks for the list command
         elif command == "list":
             item_status = None
             if len(args) == 1:
